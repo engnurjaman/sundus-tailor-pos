@@ -63,7 +63,8 @@ interface Order {
         extra: number;
         paymentMethod: string;
     };
-    customerId: number;
+    customer: Customer | { id: null; name: string; phone: string }; // <-- Fix here
+    customerId?: number; // Optional, used for lookup
 }
 
 interface SettingsData {
@@ -412,13 +413,13 @@ const useLanguage = () => {
 
     const t = (key: string): string => {
         const keys = key.split('.');
-        let result = translations[language as 'ar' | 'en'];
+        let result: any = translations[language as 'ar' | 'en'];
         for (const k of keys) {
-            result = (result as any)[k];
+            result = result[k];
             if (!result) {
-                let fallbackResult = translations['en'];
+                let fallbackResult: any = translations['en'];
                 for (const fk of keys) {
-                    fallbackResult = (fallbackResult as any)[fk];
+                    fallbackResult = fallbackResult[fk];
                     if (!fallbackResult) return key;
                 }
                 return fallbackResult as string;
@@ -534,25 +535,32 @@ const ConfirmationModal = ({ t, onConfirm, onCancel }: { t: (key: string) => str
 );
 
 const CustomerForm = ({ t, customer, onSave, onCancel }: { t: (key: string) => string, customer: Customer | null, onSave: (data: Customer) => void, onCancel: () => void }) => {
+    const defaultMeasurements = { 
+        length: '', shoulders: '', sleeveLength: '', sleeveWidth: '', neck: '', chest: '', waist: '',
+        cuffsLength: '', cuffsWidth: '', chestPlate: '', bottomWidth: ''
+    };
+    const defaultLooseMeasurements = {
+        bodyLoose: '', waistLoose: '', hipLoose: '', chestLoose: '', bicep: '', wrist: ''
+    };
+    
     const [formData, setFormData] = useState<Customer>(customer || {
         id: Date.now(),
         name: '',
         phone: '',
         notes: '',
-        measurements: { standard: {} as Measurements, loose: {} as LooseMeasurements }
+        measurements: { standard: defaultMeasurements, loose: defaultLooseMeasurements }
     });
-    const [focusedField, setFocusedField] = useState<string | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleMeasurementChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleMeasurementChange = (type: 'standard' | 'loose', e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            measurements: { ...prev.measurements, standard: { ...prev.measurements.standard, [name]: value } }
+            measurements: { ...prev.measurements, [type]: { ...prev.measurements[type], [name]: value } }
         }));
     };
 
@@ -566,8 +574,8 @@ const CustomerForm = ({ t, customer, onSave, onCancel }: { t: (key: string) => s
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-40 p-4">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start z-40 p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-4xl my-8">
                 <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">{customer ? t('editCustomer') : t('newCustomer')}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -585,25 +593,29 @@ const CustomerForm = ({ t, customer, onSave, onCancel }: { t: (key: string) => s
                         <textarea name="notes" value={formData.notes} onChange={handleChange} rows={2} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
                     </div>
                     <h3 className="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">{t('measurements')}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="md:col-span-1">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <div className="md:col-span-4 lg:col-span-3">
                              <ThobeMeasurementDiagram />
                         </div>
-                        <div className="md:col-span-2 grid grid-cols-2 gap-4 content-start">
-                           {Object.keys(formData.measurements.standard).map(key => (
-                                <div key={key}>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t(key)}</label>
-                                    <input 
-                                        type="number" 
-                                        name={key} 
-                                        value={(formData.measurements.standard as any)[key]} 
-                                        onChange={handleMeasurementChange}
-                                        onFocus={() => setFocusedField(key)}
-                                        onBlur={() => setFocusedField(null)}
-                                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" 
-                                    />
-                                </div>
-                            ))}
+                        <div className="md:col-span-8 lg:col-span-9">
+                            <h4 className="font-semibold mb-2">{t('measurements')}</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 content-start">
+                                {Object.keys(formData.measurements.standard).map(key => (
+                                    <div key={key}>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t(key)}</label>
+                                        <input type="number" name={key} value={(formData.measurements.standard as any)[key]} onChange={(e) => handleMeasurementChange('standard', e)} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                                    </div>
+                                ))}
+                            </div>
+                            <h4 className="font-semibold mt-4 mb-2">{t('looseSizeOptional')}</h4>
+                             <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 content-start">
+                                {Object.keys(formData.measurements.loose).map(key => (
+                                    <div key={key}>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t(key)}</label>
+                                        <input type="number" name={key} value={(formData.measurements.loose as any)[key]} onChange={(e) => handleMeasurementChange('loose', e)} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className="flex justify-end space-x-4 rtl:space-x-reverse mt-6">
@@ -625,24 +637,33 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
         bodyLoose: '', waistLoose: '', hipLoose: '', chestLoose: '', bicep: '', wrist: ''
     };
     
-    const [formData, setFormData] = useState(order ? 
-        {...order, customer: customers.find(c => c.id === order.customerId) || {id: null, name: '', phone: ''}} : 
-        {
-            id: Date.now(),
-            orderDate: new Date().toISOString().split('T')[0],
-            deliveryDate: '',
-            status: 'New Order',
-            details: {
-                fabric: 'Japanese Synthetic', color: 'أبيض', collar: 'Standard Saudi',
-                cuffs: 'Simple', pockets: 'Standard Chest', stitching: 'Hidden',
-                buttons: 'عادي', quantity: 1, pricePerThobe: 0, specialInstructions: ''
-            },
-            measurements: defaultMeasurements,
-            looseMeasurements: defaultLooseMeasurements,
-            payment: { deposit: 0, discount: 0, extra: 0, paymentMethod: 'Cash' },
-            customer: { id: null, name: '', phone: '' }
-        }
-    );
+    const [formData, setFormData] = useState<Order>(() => {
+    if (order) {
+        // Only use id, name, phone for customer
+        const foundCustomer = customers.find(c => c.id === order.customerId);
+        return {
+            ...order,
+            customer: foundCustomer
+                ? { id: foundCustomer.id, name: foundCustomer.name, phone: foundCustomer.phone }
+                : { id: null, name: '', phone: '' }
+        };
+    }
+    return {
+        id: Date.now(),
+        orderDate: new Date().toISOString().split('T')[0],
+        deliveryDate: '',
+        status: 'New Order',
+        details: {
+            fabric: 'Japanese Synthetic', color: 'أبيض', collar: 'Standard Saudi',
+            cuffs: 'Simple', pockets: 'Standard Chest', stitching: 'Hidden',
+            buttons: 'عادي', quantity: 1, pricePerThobe: 0, specialInstructions: ''
+        },
+        measurements: defaultMeasurements,
+        looseMeasurements: defaultLooseMeasurements,
+        payment: { deposit: 0, discount: 0, extra: 0, paymentMethod: 'Cash' },
+        customer: { id: null, name: '', phone: '' }
+    };
+});
     const [focusedField, setFocusedField] = useState<string | null>(null);
     const [foundCustomer, setFoundCustomer] = useState<Customer | null>(null);
 
@@ -650,7 +671,11 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            customer: { ...prev.customer, [name]: value }
+            customer: {
+                id: typeof prev.customer.id === 'number' ? prev.customer.id : null,
+                name: name === 'name' ? value : prev.customer.name,
+                phone: name === 'phone' ? value : prev.customer.phone
+            }
         }));
     };
     
@@ -669,7 +694,11 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
                 ...prev,
                 measurements: foundCustomer.measurements.standard || defaultMeasurements,
                 looseMeasurements: foundCustomer.measurements.loose || defaultLooseMeasurements,
-                customer: { ...prev.customer, name: foundCustomer.name }
+                customer: {
+                    id: foundCustomer.id,
+                    name: foundCustomer.name,
+                    phone: foundCustomer.phone
+                }
             }));
         }
     };

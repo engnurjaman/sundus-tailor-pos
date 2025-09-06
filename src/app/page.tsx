@@ -868,12 +868,26 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
                                         {t(field.name)}
                                     </label>
                                     {field.type === 'text' ? (
-                                        <input type="text" name={field.name} value={(formData.details as any)[field.name]} onChange={handleDetailChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                                      <input
+                                        type="text"
+                                        name={field.name}
+                                        value={(formData.details as any)[field.name]}
+                                        onChange={handleDetailChange}
+                                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                      />
                                     ) : (
-                                        <select name={field.name} value={(formData.details as any)[field.name]} onChange={handleDetailChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                            {field.options.map(opt => <option key={opt} value={opt}>{t(opt)}</option>)}
-                                        </select>
+                                      <select
+                                        name={field.name}
+                                        value={(formData.details as any)[field.name]}
+                                        onChange={handleDetailChange}
+                                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                      >
+                                        {field.options?.map(opt => (
+                                          <option key={opt} value={opt}>{t(opt)}</option>
+                                        ))}
+                                      </select>
                                     )}
+
                                 </div>
                             ))}
                             <textarea name="specialInstructions" rows={3} placeholder={t('specialInstructions')} value={formData.details.specialInstructions} onChange={handleDetailChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:col-span-2 lg:col-span-1"></textarea>

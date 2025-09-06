@@ -871,7 +871,7 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
                                         <input type="text" name={field.name} value={(formData.details as any)[field.name]} onChange={handleDetailChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
                                     ) : (
                                         <select name={field.name} value={(formData.details as any)[field.name]} onChange={handleDetailChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                            {field.options.map(opt => <option key={opt} value={opt}>{t(opt)}</option>)}
+                                            {(field.options ?? []).map(opt => <option key={opt} value={opt}>{t(opt)}</option>)}
                                         </select>
                                     )}
                                 </div>

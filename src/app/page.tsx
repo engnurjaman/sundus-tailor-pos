@@ -89,7 +89,7 @@ type OrderFormData = Omit<Order, 'customerId'> & {
 
 // --- Custom SVG Icons ---
 const CollarIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M6 9l6-6 6 6"/>
     <path d="M12 3v10.5a1.5 1.5 0 0 1-3 0V3"/>
     <path d="M18 9a6 6 0 0 0-12 0"/>
@@ -97,7 +97,7 @@ const CollarIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const CuffIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M15 14v4a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-4"/>
     <path d="M15 14h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2"/>
     <path d="M5 14H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/>
@@ -106,7 +106,7 @@ const CuffIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const StitchingIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M4 12s4-8 8-8 8 8 8 8-4 8-8 8-8-8-8-8z"/>
     <path d="M12 12l-2-2.5"/>
     <path d="M14 14.5l-2-2.5"/>
@@ -116,7 +116,7 @@ const StitchingIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const ButtonIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <circle cx="12" cy="12" r="10"/>
     <circle cx="12" cy="12" r="1"/>
     <path d="M12 8v-1.5"/>
@@ -420,24 +420,36 @@ const useLanguage = () => {
     }, [language]);
 
     const t = (key: string): string => {
-        const keys = key.split('.');
-        let result: any = translations[language as 'ar' | 'en'];
-        for (const k of keys) {
-            if (result && typeof result === 'object' && k in result) {
-                result = result[k];
-            } else {
-                let fallbackResult: any = translations['en'];
-                for (const fk of keys) {
-                    if (fallbackResult && typeof fallbackResult === 'object' && fk in fallbackResult) {
-                        fallbackResult = fallbackResult[fk];
-                    } else {
-                        return key;
-                    }
+        const findTranslation = (langPack: any, keys: string[]): string | null => {
+            let current: any = langPack;
+            for (const k of keys) {
+                if (current && typeof current === 'object' && k in current) {
+                    current = current[k];
+                } else {
+                    return null; // Not found
                 }
-                return String(fallbackResult);
+            }
+            return typeof current === 'string' ? current : null;
+        };
+
+        const keys = key.split('.');
+        const lang = language as 'ar' | 'en';
+        
+        let translation = findTranslation(translations[lang], keys);
+        if (translation !== null) {
+            return translation;
+        }
+
+        // Fallback to English
+        if (lang !== 'en') {
+            translation = findTranslation(translations['en'], keys);
+            if (translation !== null) {
+                return translation;
             }
         }
-        return String(result) || key;
+
+        // If nothing is found, return the key
+        return key;
     };
 
     return { language, setLanguage, t };
@@ -655,14 +667,22 @@ const CustomerForm = ({ t, customer, onSave, onCancel }: { t: (key: string) => s
     );
 };
 
+// A specific type for the fields in the OrderForm to help TypeScript
+type DetailField = {
+  name: string;
+  icon: React.ElementType;
+  type?: 'text';
+  options?: readonly string[];
+};
+
 const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAndPrint }: { 
     t: (key: string) => string; 
     order: Order | null; 
     customers: Customer[]; 
-    onSave: (order: Omit<Order, 'customerId'>, customer: Customer) => void; 
+    onSave: (order: Order, customer: Customer) => void; 
     onCancel: () => void; 
     showToast: (message: string, type: 'success' | 'error') => void; 
-    onSaveAndPrint: (order: Omit<Order, 'customerId'>, customer: Customer) => void;
+    onSaveAndPrint: (order: Order, customer: Customer) => void;
 }) => {
     
     const getInitialFormData = (): OrderFormData => {
@@ -695,13 +715,10 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
 
     const handleCustomerDetailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            customer: {
-                ...prev.customer,
-                [name]: value
-            }
-        }));
+        setFormData(prev => {
+            const newCustomer: Customer = {...prev.customer, [name]: value};
+            return {...prev, customer: newCustomer };
+        });
     };
     
     const checkExistingCustomer = () => {
@@ -761,12 +778,17 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
             return;
         }
         
-        const { customer, ...orderToSave } = formData;
-        
+        // The main save handler will re-assemble the final Order object.
+        const { customer, ...orderData } = formData;
+
+        // Create a placeholder Order object that matches the required type for the props.
+        // The actual customerId will be set in the main App component.
+        const finalOrder: Order = { ...orderData, customerId: customer.id || null };
+
         if (andPrint) {
-            onSaveAndPrint(orderToSave, customer);
+            onSaveAndPrint(finalOrder, customer);
         } else {
-            onSave(orderToSave, customer);
+            onSave(finalOrder, customer);
         }
     };
 
@@ -775,7 +797,7 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
     const totalAmount = subTotal - formData.payment.discount;
     const remaining = totalAmount - formData.payment.deposit;
     
-    const detailFields = [
+    const detailFields: readonly DetailField[] = [
         { name: 'fabric', options: FABRIC_OPTIONS, icon: Layers },
         { name: 'color', type: 'text', icon: Palette },
         { name: 'collar', options: COLLAR_OPTIONS, icon: CollarIcon },
@@ -868,26 +890,12 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
                                         {t(field.name)}
                                     </label>
                                     {field.type === 'text' ? (
-                                      <input
-                                        type="text"
-                                        name={field.name}
-                                        value={(formData.details as any)[field.name]}
-                                        onChange={handleDetailChange}
-                                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                      />
+                                        <input type="text" name={field.name} value={(formData.details as any)[field.name]} onChange={handleDetailChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
                                     ) : (
-                                      <select
-                                        name={field.name}
-                                        value={(formData.details as any)[field.name]}
-                                        onChange={handleDetailChange}
-                                        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                      >
-                                        {field.options?.map(opt => (
-                                          <option key={opt} value={opt}>{t(opt)}</option>
-                                        ))}
-                                      </select>
+                                        <select name={field.name} value={(formData.details as any)[field.name]} onChange={handleDetailChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                            {field.options?.map(opt => <option key={opt} value={opt}>{t(opt)}</option>)}
+                                        </select>
                                     )}
-
                                 </div>
                             ))}
                             <textarea name="specialInstructions" rows={3} placeholder={t('specialInstructions')} value={formData.details.specialInstructions} onChange={handleDetailChange} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:col-span-2 lg:col-span-1"></textarea>
@@ -946,17 +954,7 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
     );
 };
 
-const Invoice = ({ order, customer, settings }: { order: Order, customer: Customer | null, settings: SettingsData }) => {
-
-    const t = (key: string): string => {
-        const keys = key.split('.');
-        let result = translations['en'];
-        for (const k of keys) {
-            result = (result as any)[k];
-            if (!result) return key;
-        }
-        return result as string || key;
-    };
+const Invoice = ({ order, customer, settings, t }: { order: Order, customer: Customer | null, settings: SettingsData, t: (key: string) => string }) => {
 
     const totalAmount = (Number(order.details.quantity) || 0) * (Number(order.details.pricePerThobe) || 0);
 
@@ -1090,7 +1088,7 @@ const InvoiceModal = ({ t, order, customer, settings, onCancel }: { t: (key: str
                 </div>
                 <div className="max-h-[70vh] overflow-y-auto">
                     <div ref={componentRef}>
-                        <Invoice order={order} customer={customer} settings={settings} />
+                        <Invoice t={t} order={order} customer={customer} settings={settings} />
                     </div>
                 </div>
             </div>
@@ -1638,7 +1636,7 @@ export default function App() {
         setPrintingOrder({order, customer: customer || null});
     };
 
-    const handleSaveOrder = (orderData: Omit<Order, 'customerId'>, customerData: Customer, andPrint = false) => {
+    const handleSaveOrder = (orderData: Order, customerData: Customer, andPrint = false) => {
         let savedCustomer = customers.find(c => c.phone === customerData.phone);
         let customerIdToSave: number | null = null;
     
@@ -1681,7 +1679,7 @@ export default function App() {
         }
     };
     
-    const handleSaveAndPrint = (orderData: Omit<Order, 'customerId'>, customerData: Customer) => {
+    const handleSaveAndPrint = (orderData: Order, customerData: Customer) => {
         handleSaveOrder(orderData, customerData, true);
     }
 

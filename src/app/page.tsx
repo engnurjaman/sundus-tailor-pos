@@ -129,7 +129,7 @@ const ButtonIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const ThobeMeasurementDiagram = () => (
     <div className="w-full h-full flex items-center justify-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg min-h-[280px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="https://i.imgur.com/sOD5m5y.png" alt="Thobe Measurement Diagram" className="w-auto h-full max-h-[300px] object-contain" />
+        <img src="thobe.png" alt="Thobe Measurement Diagram" className="w-auto h-full max-h-[300px] object-contain" />
     </div>
 );
 
@@ -269,7 +269,7 @@ const translations = {
     recentOrders: "أحدث الطلبات",
   },
   en: {
-    appName: "Smart Tailor POS",
+    appName: "Al Sundus Tailor",
     dashboard: "Dashboard",
     orders: "Orders",
     customers: "Customers",
@@ -488,10 +488,10 @@ const api = {
   },
   getSettings: (): SettingsData => {
     if (typeof window === 'undefined') {
-        return { shopName: 'Sundus', shopPhone: '0533205878', shopAddress: 'Abdullah Fuad, Dammam', vatNumber: '300123456789013' };
+        return { shopName: 'Al Sundus', shopPhone: '0533205878', shopAddress: 'Abdullah Fuad, Dammam', vatNumber: '300123456789013' };
     }
     const defaults = {
-        shopName: 'Sundus',
+        shopName: 'Al Sundus',
         shopPhone: '0533205878',
         shopAddress: 'Abdullah Fuad, Dammam',
         vatNumber: '300123456789013'

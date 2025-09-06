@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, User, Tally3, Scissors, ShoppingCart, Printer, Search, Edit, Trash2, X, Sun, Moon, Settings, Palette, Pocket, Layers, LogOut, KeyRound, ArrowLeft, Upload, Download } from 'lucide-react';
 
 // --- Type Definitions for TypeScript ---
+// These interfaces define the "shape" of our data.
+
+// Defines all the standard measurements for a thobe.
 interface Measurements {
     length: string;
     shoulders: string;
@@ -18,6 +21,7 @@ interface Measurements {
     bottomWidth: string;
 }
 
+// Defines optional measurements for a looser fit.
 interface LooseMeasurements {
     bodyLoose: string;
     waistLoose: string;
@@ -27,8 +31,9 @@ interface LooseMeasurements {
     wrist: string;
 }
 
+// Defines a customer. The `id` can be null for a new customer before they are saved.
 interface Customer {
-    id: number;
+    id: number | null;
     name: string;
     phone: string;
     notes: string;
@@ -38,6 +43,7 @@ interface Customer {
     };
 }
 
+// Defines an order.
 interface Order {
     id: number;
     orderDate: string;
@@ -63,14 +69,21 @@ interface Order {
         extra: number;
         paymentMethod: string;
     };
-    customerId: number;
+    customerId: number | null;
 }
 
+// Defines the data structure for the shop's settings.
 interface SettingsData {
     shopName: string;
     shopPhone: string;
     shopAddress: string;
     vatNumber: string;
+}
+
+// Defines the shape of the data held in the order form state.
+// The customer can be a full Customer object or a new one being created.
+type OrderFormData = Omit<Order, 'customerId'> & {
+    customer: Customer;
 }
 
 
@@ -116,7 +129,7 @@ const ButtonIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const ThobeMeasurementDiagram = () => (
     <div className="w-full h-full flex items-center justify-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg min-h-[280px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="thobe.png" alt="Thobe Measurement Diagram" className="w-auto h-full max-h-[300px] object-contain" />
+        <img src="https://i.imgur.com/sOD5m5y.png" alt="Thobe Measurement Diagram" className="w-auto h-full max-h-[300px] object-contain" />
     </div>
 );
 
@@ -228,29 +241,23 @@ const translations = {
     exportCustomers: "تصدير العملاء",
     importCustomers: "استيراد العملاء",
     importSuccess: "تم استيراد العملاء بنجاح!",
-    // Statuses
     'New Order': 'طلب جديد',
     'Fabric Cutting': 'قص القماش',
     'Sewing': 'جاري الخياطة',
     'Ready for Pickup': 'جاهز للاستلام',
     'Completed': 'مكتمل',
     'Cancelled': 'ملغي',
-    // Fabrics
     'Japanese Synthetic': 'ياباني صناعي',
     'Korean Cotton': 'قطن كوري',
     'Indonesian Blend': 'مخلوط إندونيسي',
     'Swiss Cotton': 'قطن سويسري',
-    // Collars
     'Standard Saudi': 'سعودي عادي',
     'Round': 'دائري',
     'Stand-up': 'واقف',
-    // Cuffs
     'Simple': 'سادة',
     'Cufflinks': 'كبك',
-    // Pockets
     'Standard Chest': 'جيب صدر عادي',
     'Hidden Side': 'جيب جانبي مخفي',
-    // Stitching
     'Hidden': 'مخفي',
     'Visible': 'ظاهر',
     dashboardMetrics: {
@@ -366,29 +373,23 @@ const translations = {
     exportCustomers: "Export Customers",
     importCustomers: "Import Customers",
     importSuccess: "Customers imported successfully!",
-    // Statuses
     'New Order': 'New Order',
     'Fabric Cutting': 'Fabric Cutting',
     'Sewing': 'Sewing',
     'Ready for Pickup': 'Ready for Pickup',
     'Completed': 'Completed',
     'Cancelled': 'Cancelled',
-    // Fabrics
     'Japanese Synthetic': 'Japanese Synthetic',
     'Korean Cotton': 'Korean Cotton',
     'Indonesian Blend': 'Indonesian Blend',
     'Swiss Cotton': 'Swiss Cotton',
-    // Collars
     'Standard Saudi': 'Standard Saudi',
     'Round': 'Round',
     'Stand-up': 'Stand-up',
-    // Cuffs
     'Simple': 'Simple',
     'Cufflinks': 'Cufflinks',
-    // Pockets
     'Standard Chest': 'Standard Chest',
     'Hidden Side': 'Hidden Side',
-    // Stitching
     'Hidden': 'Hidden',
     'Visible': 'Visible',
     dashboardMetrics: {
@@ -401,6 +402,7 @@ const translations = {
   }
 };
 
+// --- Custom Hooks for state management ---
 const useLanguage = () => {
     const [language, setLanguage] = useState('en');
 
@@ -432,10 +434,10 @@ const useLanguage = () => {
                         return key;
                     }
                 }
-                return fallbackResult as string;
+                return String(fallbackResult);
             }
         }
-        return result as string || key;
+        return String(result) || key;
     };
 
     return { language, setLanguage, t };
@@ -458,10 +460,10 @@ const useTheme = () => {
         }
     }, [theme]);
 
-    return [theme, setTheme];
+    return [theme, setTheme] as const;
 };
 
-// --- MOCK API for localStorage ---
+// --- API for localStorage ---
 const api = {
   get: (key: string): any[] => {
     if (typeof window === 'undefined') return [];
@@ -543,22 +545,32 @@ const ConfirmationModal = ({ t, onConfirm, onCancel }: { t: (key: string) => str
     </div>
 );
 
+const defaultMeasurements: Measurements = { 
+    length: '', shoulders: '', sleeveLength: '', sleeveWidth: '', neck: '', chest: '', waist: '',
+    cuffsLength: '', cuffsWidth: '', chestPlate: '', bottomWidth: ''
+};
+const defaultLooseMeasurements: LooseMeasurements = {
+    bodyLoose: '', waistLoose: '', hipLoose: '', chestLoose: '', bicep: '', wrist: ''
+};
+
+const newCustomerTemplate: Customer = {
+    id: null,
+    name: '',
+    phone: '',
+    notes: '',
+    measurements: { standard: defaultMeasurements, loose: defaultLooseMeasurements }
+};
+
+
 const CustomerForm = ({ t, customer, onSave, onCancel }: { t: (key: string) => string, customer: Customer | null, onSave: (data: Customer) => void, onCancel: () => void }) => {
-    const defaultMeasurements = { 
-        length: '', shoulders: '', sleeveLength: '', sleeveWidth: '', neck: '', chest: '', waist: '',
-        cuffsLength: '', cuffsWidth: '', chestPlate: '', bottomWidth: ''
-    };
-    const defaultLooseMeasurements = {
-        bodyLoose: '', waistLoose: '', hipLoose: '', chestLoose: '', bicep: '', wrist: ''
-    };
-    
-    const [formData, setFormData] = useState<Customer>(customer || {
-        id: Date.now(),
-        name: '',
-        phone: '',
-        notes: '',
-        measurements: { standard: defaultMeasurements, loose: defaultLooseMeasurements }
-    });
+    const [formData, setFormData] = useState<Customer>(customer || newCustomerTemplate);
+
+    useEffect(() => {
+        // This ensures the form resets correctly when opening for a new customer
+        // after editing an existing one.
+        setFormData(customer || newCustomerTemplate);
+    }, [customer]);
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -576,10 +588,16 @@ const CustomerForm = ({ t, customer, onSave, onCancel }: { t: (key: string) => s
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name || !formData.phone) {
+            // In a real app, you'd show a user-facing error here.
             console.error(t('customerName') + ' and ' + t('customerPhone') + ' are required.');
             return;
         }
-        onSave(formData);
+        // If it's a new customer, assign a real ID.
+        const customerToSave = { ...formData };
+        if (customerToSave.id === null) {
+            customerToSave.id = Date.now();
+        }
+        onSave(customerToSave);
     };
 
     return (
@@ -637,40 +655,44 @@ const CustomerForm = ({ t, customer, onSave, onCancel }: { t: (key: string) => s
     );
 };
 
-const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAndPrint }: { t: (key: string) => string, order: Order | null, customers: Customer[], onSave: (data: any) => void, onCancel: () => void, showToast: (message: string, type: 'success' | 'error') => void, onSaveAndPrint: (data: any) => void }) => {
-    const defaultMeasurements = { 
-        length: '', shoulders: '', sleeveLength: '', sleeveWidth: '', neck: '', chest: '', waist: '',
-        cuffsLength: '', cuffsWidth: '', chestPlate: '', bottomWidth: ''
-    };
-    const defaultLooseMeasurements = {
-        bodyLoose: '', waistLoose: '', hipLoose: '', chestLoose: '', bicep: '', wrist: ''
-    };
+const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAndPrint }: { t: (key: string) => string, order: Order | null, customers: Customer[], onSave: (order: Order, customer: Customer) => void, onCancel: () => void, showToast: (message: string, type: 'success' | 'error') => void, onSaveAndPrint: (order: Order, customer: Customer) => void }) => {
     
-    const [formData, setFormData] = useState(order ? 
-        {...order, customer: customers.find(c => c.id === order.customerId) || {id: null, name: '', phone: ''}} : 
-        {
+    const getInitialFormData = (): OrderFormData => {
+        if (order) {
+            const associatedCustomer = customers.find(c => c.id === order.customerId);
+            return {
+                ...order,
+                customer: associatedCustomer || newCustomerTemplate,
+            };
+        }
+        return {
             id: Date.now(),
             orderDate: new Date().toISOString().split('T')[0],
             deliveryDate: '',
             status: 'New Order',
             details: {
-                fabric: 'Japanese Synthetic', color: 'أبيض', collar: 'Standard Saudi',
+                fabric: 'Japanese Synthetic', color: 'White', collar: 'Standard Saudi',
                 cuffs: 'Simple', pockets: 'Standard Chest', stitching: 'Hidden',
-                buttons: 'عادي', quantity: 1, pricePerThobe: 0, specialInstructions: ''
+                buttons: 'Standard', quantity: 1, pricePerThobe: 0, specialInstructions: ''
             },
             measurements: defaultMeasurements,
             looseMeasurements: defaultLooseMeasurements,
             payment: { deposit: 0, discount: 0, extra: 0, paymentMethod: 'Cash' },
-            customer: { id: null, name: '', phone: '' }
-        }
-    );
+            customer: newCustomerTemplate
+        };
+    };
+
+    const [formData, setFormData] = useState<OrderFormData>(getInitialFormData());
     const [foundCustomer, setFoundCustomer] = useState<Customer | null>(null);
 
     const handleCustomerDetailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            customer: { ...prev.customer, [name]: value }
+            customer: {
+                ...prev.customer,
+                [name]: value
+            }
         }));
     };
     
@@ -689,7 +711,7 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
                 ...prev,
                 measurements: foundCustomer.measurements.standard || defaultMeasurements,
                 looseMeasurements: foundCustomer.measurements.loose || defaultLooseMeasurements,
-                customer: { ...prev.customer, name: foundCustomer.name }
+                customer: { ...prev.customer, name: foundCustomer.name, id: foundCustomer.id, notes: foundCustomer.notes }
             }));
         }
     };
@@ -730,10 +752,13 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
             showToast(t('customerRequired'), 'error');
             return;
         }
+        
+        const { customer, ...orderToSave } = formData;
+        
         if (andPrint) {
-            onSaveAndPrint(formData);
+            onSaveAndPrint(orderToSave, customer);
         } else {
-            onSave(formData);
+            onSave(orderToSave, customer);
         }
     };
 
@@ -772,7 +797,7 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
                                 <input type="tel" name="phone" placeholder={t('customerPhone')} value={formData.customer.phone} onChange={handleCustomerDetailChange} onBlur={checkExistingCustomer} className="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" required />
                                 {foundCustomer && (
                                     <div className="mt-2 text-sm text-blue-600 dark:text-blue-400">
-                                        <span>{t('customer')} {foundCustomer.name} {t('found')}.</span>
+                                        <span>{t('customer')} {foundCustomer.name} found.</span>
                                         <button type="button" onClick={handleUseSavedMeasurements} className="ml-2 rtl:mr-2 font-semibold underline">{t('useSavedMeasurements')}</button>
                                     </div>
                                 )}
@@ -899,7 +924,7 @@ const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAnd
     );
 };
 
-const Invoice = ({ order, customer, settings }: { order: Order, customer: Customer, settings: SettingsData }) => {
+const Invoice = ({ order, customer, settings }: { order: Order, customer: Customer | null, settings: SettingsData }) => {
 
     const t = (key: string): string => {
         const keys = key.split('.');
@@ -931,8 +956,8 @@ const Invoice = ({ order, customer, settings }: { order: Order, customer: Custom
             </div>
             <div className="mb-8 p-4 bg-gray-50 rounded-lg">
                 <h3 className="font-semibold text-gray-700">{t('billTo')}:</h3>
-                <p className="font-bold">{customer.name}</p>
-                <p>{t('phone')}: {customer.phone}</p>
+                <p className="font-bold">{customer?.name || 'N/A'}</p>
+                <p>{t('phone')}: {customer?.phone || 'N/A'}</p>
             </div>
             
             <div className="mb-8">
@@ -982,48 +1007,49 @@ const Invoice = ({ order, customer, settings }: { order: Order, customer: Custom
     );
 };
 
-const InvoiceModal = ({ t, order, customer, settings, onCancel }: { t: (key: string) => string, order: Order, customer: Customer, settings: SettingsData, onCancel: () => void }) => {
+const InvoiceModal = ({ t, order, customer, settings, onCancel }: { t: (key: string) => string, order: Order, customer: Customer | null, settings: SettingsData, onCancel: () => void }) => {
     const componentRef = useRef<HTMLDivElement>(null);
     
     const handlePrint = () => {
         const node = componentRef.current;
-        if (!node) {
-            console.error("Print component not found.");
-            return;
-        }
+        if (!node) return;
 
         const printWindow = window.open('', '_blank', 'width=800,height=600');
         if (!printWindow) {
-            console.error("Please allow popups for this website to print the invoice.");
+            alert(t('allowPopups'));
             return;
         }
 
-        const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-            .map(el => el.outerHTML)
-            .join('');
-
-        const content = node.innerHTML;
-
+        const styles = Array.from(document.styleSheets)
+            .map(sheet => {
+                try {
+                    return Array.from(sheet.cssRules)
+                        .map(rule => rule.cssText)
+                        .join('');
+                } catch (e) {
+                    console.warn('Could not read stylesheet rules', e);
+                    return '';
+                }
+            })
+            .join('\n');
+            
         printWindow.document.write(`
-            <!DOCTYPE html>
             <html>
                 <head>
                     <title>${t('invoice')}</title>
-                    ${styles}
+                    <style>${styles}</style>
                 </head>
                 <body>
-                    ${content}
+                    ${node.innerHTML}
                 </body>
             </html>
         `);
-
         printWindow.document.close();
-
+        printWindow.focus();
         setTimeout(() => {
-            printWindow.focus();
-            printWindow.print();
-            printWindow.close();
-        }, 500);
+             printWindow.print();
+             printWindow.close();
+        }, 250);
     };
 
     return (
@@ -1071,10 +1097,10 @@ const Dashboard = ({ t, orders, customers, onNewOrderClick, onEditOrder, onDelet
         .slice(0, 5);
 
     const metrics = [
-        { label: t('dashboardMetrics.totalOrders'), value: monthlyOrders.length, icon: ShoppingCart },
+        { label: t('dashboardMetrics.totalOrders'), value: monthlyOrders.length.toString(), icon: ShoppingCart },
         { label: t('dashboardMetrics.monthlyRevenue'), value: monthlyRevenue.toFixed(2), icon: Tally3 },
-        { label: t('dashboardMetrics.ordersInProgress'), value: ordersInProgress, icon: Scissors },
-        { label: t('dashboardMetrics.readyForPickup'), value: readyForPickup, icon: User },
+        { label: t('dashboardMetrics.ordersInProgress'), value: ordersInProgress.toString(), icon: Scissors },
+        { label: t('dashboardMetrics.readyForPickup'), value: readyForPickup.toString(), icon: User },
     ];
 
     return (
@@ -1146,7 +1172,7 @@ const Dashboard = ({ t, orders, customers, onNewOrderClick, onEditOrder, onDelet
     );
 };
 
-const OrdersPage = ({ t, orders, setOrders, customers, setCustomers, showToast, onNewOrderClick, onEditOrder, onDeleteOrder, onPrintInvoice }: { t: (key: string) => string, orders: Order[], setOrders: React.Dispatch<React.SetStateAction<Order[]>>, customers: Customer[], setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>, showToast: (message: string, type: 'success' | 'error') => void, onNewOrderClick: () => void, onEditOrder: (order: Order) => void, onDeleteOrder: (id: number) => void, onPrintInvoice: (order: Order) => void }) => {
+const OrdersPage = ({ t, orders, customers, onEditOrder, onDeleteOrder, onPrintInvoice }: { t: (key: string) => string, orders: Order[], customers: Customer[], onEditOrder: (order: Order) => void, onDeleteOrder: (id: number) => void, onPrintInvoice: (order: Order) => void }) => {
     const [searchTerm, setSearchTerm] = useState('');
     
     const filteredOrders = orders.filter(order => {
@@ -1241,11 +1267,14 @@ const CustomersPage = ({ t, customers, setCustomers, showToast }: { t: (key: str
         setIsFormOpen(true);
     };
 
-    const handleDeleteCustomer = (id: number) => {
-        setDeletingId(id);
+    const handleDeleteCustomer = (id: number | null) => {
+        if (id !== null) {
+            setDeletingId(id);
+        }
     };
     
     const confirmDelete = () => {
+        if (deletingId === null) return;
         const updatedCustomers = customers.filter(c => c.id !== deletingId);
         setCustomers(updatedCustomers);
         setDeletingId(null);
@@ -1253,12 +1282,12 @@ const CustomersPage = ({ t, customers, setCustomers, showToast }: { t: (key: str
     };
 
     const handleSaveCustomer = (customerData: Customer) => {
-        if (editingCustomer) {
+        if (editingCustomer && editingCustomer.id !== null) {
             const updatedCustomers = customers.map(c => c.id === editingCustomer.id ? customerData : c);
             setCustomers(updatedCustomers);
             showToast(t('customerUpdated'), 'success');
         } else {
-            setCustomers([customerData, ...customers]);
+            setCustomers(prev => [{...customerData, id: Date.now()}, ...prev]);
             showToast(t('customerCreated'), 'success');
         }
         setIsFormOpen(false);
@@ -1266,9 +1295,18 @@ const CustomersPage = ({ t, customers, setCustomers, showToast }: { t: (key: str
     };
 
     const handleExport = () => {
-        const headers = ['id', 'name', 'phone', 'notes', ...Object.keys(customers[0]?.measurements.standard || {}).map(k => `standard_${k}`), ...Object.keys(customers[0]?.measurements.loose || {}).map(k => `loose_${k}`)];
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + [headers.join(','), ...customers.map(c => [c.id, c.name, c.phone, `"${c.notes}"`, ...Object.values(c.measurements.standard), ...Object.values(c.measurements.loose)].join(','))].join('\n');
+        const headers = ['id', 'name', 'phone', 'notes', ...Object.keys(defaultMeasurements).map(k => `standard_${k}`), ...Object.keys(defaultLooseMeasurements).map(k => `loose_${k}`)];
+        const csvRows = customers.map(c => 
+            [
+                c.id,
+                `"${c.name}"`,
+                `"${c.phone}"`,
+                `"${c.notes}"`,
+                ...Object.values(c.measurements.standard),
+                ...Object.values(c.measurements.loose)
+            ].join(',')
+        );
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...csvRows].join('\n');
         
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -1288,46 +1326,41 @@ const CustomersPage = ({ t, customers, setCustomers, showToast }: { t: (key: str
             const text = e.target?.result as string;
             const lines = text.split('\n').slice(1);
             const newCustomers: Customer[] = [];
+            const existingPhones = new Set(customers.map(c => c.phone));
             
             lines.forEach(line => {
                 if(!line) return;
                 const values = line.split(',');
-                const [id, name, phone, notes, ...measurementValues] = values;
+                // Basic CSV parsing, assumes no commas in quoted fields for simplicity
+                const [idStr, name, phone, notes, ...measurementValues] = values.map(v => v.replace(/"/g, ''));
                 
-                if(!customers.some(c => c.phone === phone)) {
-                    const standardKeys = Object.keys(defaultMeasurements);
-                    const looseKeys = Object.keys(defaultLooseMeasurements);
-                    const standard = {} as Measurements;
-                    const loose = {} as LooseMeasurements;
+                if(phone && !existingPhones.has(phone)) {
+                    const standardKeys = Object.keys(defaultMeasurements) as Array<keyof Measurements>;
+                    const looseKeys = Object.keys(defaultLooseMeasurements) as Array<keyof LooseMeasurements>;
+                    const standard: Measurements = { ...defaultMeasurements };
+                    const loose: LooseMeasurements = { ...defaultLooseMeasurements };
                     
                     standardKeys.forEach((key, index) => {
-                        (standard as any)[key] = measurementValues[index] || '';
+                        standard[key] = measurementValues[index] || '';
                     });
                     looseKeys.forEach((key, index) => {
-                        (loose as any)[key] = measurementValues[standardKeys.length + index] || '';
+                        loose[key] = measurementValues[standardKeys.length + index] || '';
                     });
 
                     newCustomers.push({
-                        id: parseInt(id) || Date.now(),
+                        id: parseInt(idStr) || Date.now(),
                         name,
                         phone,
-                        notes: notes.replace(/"/g, ''),
+                        notes,
                         measurements: { standard, loose }
                     });
+                    existingPhones.add(phone);
                 }
             });
             setCustomers(prev => [...prev, ...newCustomers]);
             showToast(t('importSuccess'), 'success');
         };
         reader.readAsText(file);
-    };
-
-    const defaultMeasurements = { 
-        length: '', shoulders: '', sleeveLength: '', sleeveWidth: '', neck: '', chest: '', waist: '',
-        cuffsLength: '', cuffsWidth: '', chestPlate: '', bottomWidth: ''
-    };
-    const defaultLooseMeasurements = {
-        bodyLoose: '', waistLoose: '', hipLoose: '', chestLoose: '', bicep: '', wrist: ''
     };
 
     const filteredCustomers = customers.filter(customer =>
@@ -1394,7 +1427,7 @@ const CustomersPage = ({ t, customers, setCustomers, showToast }: { t: (key: str
             </div>
 
             {isFormOpen && <CustomerForm t={t} customer={editingCustomer} onSave={handleSaveCustomer} onCancel={() => setIsFormOpen(false)} />}
-            {deletingId && <ConfirmationModal t={t} onConfirm={confirmDelete} onCancel={() => setDeletingId(null)} />}
+            {deletingId !== null && <ConfirmationModal t={t} onConfirm={confirmDelete} onCancel={() => setDeletingId(null)} />}
         </div>
     );
 };
@@ -1513,7 +1546,7 @@ export default function App() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
-    const [printingOrder, setPrintingOrder] = useState<{order: Order, customer: Customer} | null>(null);
+    const [printingOrder, setPrintingOrder] = useState<{order: Order, customer: Customer | null} | null>(null);
     
     const [orders, setOrders] = useState<Order[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -1572,6 +1605,7 @@ export default function App() {
     };
 
     const confirmDelete = () => {
+        if (deletingId === null) return;
         setOrders(orders.filter(o => o.id !== deletingId));
         setDeletingId(null);
         showToast(t('itemDeleted'), 'success');
@@ -1579,57 +1613,54 @@ export default function App() {
 
     const handlePrintInvoice = (order: Order) => {
         const customer = customers.find(c => c.id === order.customerId);
-        if(customer) {
-            setPrintingOrder({order, customer});
-        }
+        setPrintingOrder({order, customer: customer || null});
     };
 
-    const handleSaveOrder = (orderData: any, andPrint = false) => {
-        const { customer, ...restOfOrder } = orderData;
-        const customerToSave = customers.find(c => c.phone === customer.phone);
-        let customerIdToSave;
-        let customerForInvoice;
-
-        if (customerToSave) {
-            customerIdToSave = customerToSave.id;
-            customerForInvoice = { ...customerToSave, name: customer.name, measurements: { standard: orderData.measurements, loose: orderData.looseMeasurements } };
-            if (customerToSave.name !== customer.name || JSON.stringify(customerToSave.measurements) !== JSON.stringify({ standard: orderData.measurements, loose: orderData.looseMeasurements })) {
-                setCustomers(customers.map(c => c.id === customerIdToSave ? customerForInvoice : c));
+    const handleSaveOrder = (orderData: Omit<Order, 'customerId'>, customerData: Customer, andPrint = false) => {
+        let savedCustomer = customers.find(c => c.phone === customerData.phone);
+        let customerIdToSave: number | null = null;
+    
+        if (savedCustomer) {
+            // Update existing customer if details changed
+            customerIdToSave = savedCustomer.id;
+            const isChanged = savedCustomer.name !== customerData.name || JSON.stringify(savedCustomer.measurements) !== JSON.stringify({ standard: orderData.measurements, loose: orderData.looseMeasurements });
+            if (isChanged) {
+                const updatedCustomer = { ...savedCustomer, name: customerData.name, measurements: { standard: orderData.measurements, loose: orderData.looseMeasurements } };
+                setCustomers(customers.map(c => c.id === customerIdToSave ? updatedCustomer : c));
+                savedCustomer = updatedCustomer;
             }
         } else {
+            // Create new customer
             const newCustomer: Customer = { 
+                ...customerData,
                 id: Date.now(), 
-                name: customer.name, 
-                phone: customer.phone, 
                 measurements: { standard: orderData.measurements, loose: orderData.looseMeasurements },
-                notes: '' 
             };
-            setCustomers(prevCustomers => [newCustomer, ...prevCustomers]);
+            setCustomers(prev => [newCustomer, ...prev]);
             customerIdToSave = newCustomer.id;
-            customerForInvoice = newCustomer;
+            savedCustomer = newCustomer;
         }
 
-        const finalOrderData = { ...restOfOrder, customerId: customerIdToSave };
-        delete finalOrderData.customer;
+        const finalOrder: Order = { ...orderData, customerId: customerIdToSave };
 
         if (editingOrder) {
-            setOrders(orders.map(o => o.id === editingOrder.id ? finalOrderData : o));
+            setOrders(orders.map(o => o.id === editingOrder.id ? finalOrder : o));
             showToast(t('orderUpdated'), 'success');
         } else {
             const newOrderId = orders.length > 0 ? Math.max(...orders.map(o => o.id)) + 1 : 1;
-            finalOrderData.id = newOrderId;
-            setOrders(prevOrders => [finalOrderData, ...prevOrders]);
+            finalOrder.id = newOrderId;
+            setOrders(prev => [finalOrder, ...prev]);
             showToast(t('orderCreated'), 'success');
         }
         setIsFormOpen(false);
         setEditingOrder(null);
-        if (andPrint) {
-            setPrintingOrder({order: finalOrderData, customer: customerForInvoice});
+        if (andPrint && savedCustomer) {
+            setPrintingOrder({order: finalOrder, customer: savedCustomer});
         }
     };
-
-    const handleSaveAndPrint = (orderData: any) => {
-        handleSaveOrder(orderData, true);
+    
+    const handleSaveAndPrint = (orderData: Omit<Order, 'customerId'>, customerData: Customer) => {
+        handleSaveOrder(orderData, customerData, true);
     }
 
     if (!isAuthenticated) {
@@ -1642,7 +1673,7 @@ export default function App() {
             case 'orders': return <OrdersPage t={t} orders={orders} customers={customers} onEditOrder={handleEditOrder} onDeleteOrder={handleDeleteOrder} onPrintInvoice={handlePrintInvoice} />;
             case 'customers': return <CustomersPage t={t} customers={customers} setCustomers={setCustomers} showToast={showToast} />;
             case 'settings': return <SettingsPage t={t} showToast={showToast} />;
-            default: return <Dashboard t={t} orders={orders} customers={customers} onNewOrderClick={handleNewOrderClick} />;
+            default: return <Dashboard t={t} orders={orders} customers={customers} onNewOrderClick={handleNewOrderClick} onEditOrder={handleEditOrder} onDeleteOrder={handleDeleteOrder} onPrintInvoice={handlePrintInvoice} />;
         }
     };
 
@@ -1700,7 +1731,7 @@ export default function App() {
                         <Tally3 size={24} />
                     </button>
                     <div className="flex items-center">
-                        {/* Header content like user profile dropdown can go here */}
+                        {/* Header content can go here */}
                     </div>
                 </header>
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-6">
@@ -1709,7 +1740,7 @@ export default function App() {
             </div>
             {toast && <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />}
             {isFormOpen && <OrderForm t={t} order={editingOrder} customers={customers} onSave={handleSaveOrder} onSaveAndPrint={handleSaveAndPrint} onCancel={() => setIsFormOpen(false)} showToast={showToast} />}
-            {deletingId && <ConfirmationModal t={t} onConfirm={confirmDelete} onCancel={() => setDeletingId(null)} />}
+            {deletingId !== null && <ConfirmationModal t={t} onConfirm={confirmDelete} onCancel={() => setDeletingId(null)} />}
             {printingOrder && <InvoiceModal t={t} order={printingOrder.order} customer={printingOrder.customer} settings={api.getSettings()} onCancel={() => setPrintingOrder(null)} />}
         </div>
     );

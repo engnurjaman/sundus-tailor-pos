@@ -655,7 +655,15 @@ const CustomerForm = ({ t, customer, onSave, onCancel }: { t: (key: string) => s
     );
 };
 
-const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAndPrint }: { t: (key: string) => string, order: Order | null, customers: Customer[], onSave: (order: Order, customer: Customer) => void, onCancel: () => void, showToast: (message: string, type: 'success' | 'error') => void, onSaveAndPrint: (order: Order, customer: Customer) => void }) => {
+const OrderForm = ({ t, order, customers, onSave, onCancel, showToast, onSaveAndPrint }: { 
+    t: (key: string) => string; 
+    order: Order | null; 
+    customers: Customer[]; 
+    onSave: (order: Omit<Order, 'customerId'>, customer: Customer) => void; 
+    onCancel: () => void; 
+    showToast: (message: string, type: 'success' | 'error') => void; 
+    onSaveAndPrint: (order: Omit<Order, 'customerId'>, customer: Customer) => void;
+}) => {
     
     const getInitialFormData = (): OrderFormData => {
         if (order) {
@@ -1745,3 +1753,4 @@ export default function App() {
         </div>
     );
 }
+
